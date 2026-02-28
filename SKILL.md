@@ -58,6 +58,44 @@ Always confirm with the user what spreadsheet ID and sheet name to use if not sp
 
 Range format: `SheetName!A1:Z100` or just `SheetName!A1` (for write/append start position).
 
+## Using as an MCP Server (Claude Desktop or Claude Code)
+
+`server.ts` is a stdio MCP server that exposes four tools:
+`sheets_read`, `sheets_write`, `sheets_append`, `sheets_clear`.
+
+### Claude Desktop
+
+Add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sync-sheets": {
+      "command": "npx",
+      "args": ["tsx", "/Users/YOUR_USERNAME/.claude/skills/sync-sheets/server.ts"]
+    }
+  }
+}
+```
+
+Replace `YOUR_USERNAME` with your macOS username. Then restart Claude Desktop.
+
+### Claude Code
+
+```bash
+claude mcp add sync-sheets -- npx tsx ~/.claude/skills/sync-sheets/server.ts
+```
+
+### Credentials for MCP usage
+
+The MCP server reads credentials from the same `~/.claude/skills/sync-sheets/config.json`.
+Make sure it exists before starting the server (run `/sync-sheets` in Claude Code to set it up,
+or create it manually):
+
+```json
+{ "googleServiceAccountJson": { ...service account object... } }
+```
+
 ## Notes
 
 - The service account must be shared as an editor on the target spreadsheet.
