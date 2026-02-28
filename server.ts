@@ -188,3 +188,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // --- Start ---
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+// Keep the process alive until stdin closes (required for newer MCP SDK versions
+// where connect() resolves immediately instead of blocking).
+process.stdin.resume();
+process.stdin.on("close", () => process.exit(0));
