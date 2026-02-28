@@ -24,40 +24,47 @@ echo "Installing dependencies..."
 cd "$SKILL_DIR"
 npm install --silent
 
-# 3. Prompt for credentials if not already saved
+# 3. Prompt for credentials if not already saved (only when stdin is a terminal)
 if [ ! -f "$CREDS_FILE" ]; then
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Google Service Account credentials required."
-  echo ""
-  echo "1. Go to https://console.cloud.google.com/iam-admin/serviceaccounts"
-  echo "2. Create a service account (or use existing)"
-  echo "3. Create a JSON key and download it"
-  echo "4. Share your spreadsheet with the service account email as Editor"
-  echo ""
-  echo "Paste the full contents of the JSON key file below,"
-  echo "then press Enter and Ctrl+D:"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  SA_JSON=$(cat)
+  if [ -t 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Google Service Account credentials required."
+    echo ""
+    echo "1. Go to https://console.cloud.google.com/iam-admin/serviceaccounts"
+    echo "2. Create a service account (or use existing)"
+    echo "3. Create a JSON key and download it"
+    echo "4. Share your spreadsheet with the service account email as Editor"
+    echo ""
+    echo "Paste the full contents of the JSON key file below,"
+    echo "then press Enter and Ctrl+D:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    SA_JSON=$(cat)
 
-  # Validate it looks like a service account
-  if ! echo "$SA_JSON" | node -e "
-    const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-    if (d.type !== 'service_account' || !d.client_email || !d.private_key) {
-      process.stderr.write('Error: does not look like a service account JSON\n');
-      process.exit(1);
-    }
-  "; then
-    echo "Aborting. Please re-run install.sh with a valid service account JSON."
-    exit 1
+    # Validate it looks like a service account
+    if ! echo "$SA_JSON" | node -e "
+      const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      if (d.type !== 'service_account' || !d.client_email || !d.private_key) {
+        process.stderr.write('Error: does not look like a service account JSON\n');
+        process.exit(1);
+      }
+    " 2>/dev/null; then
+      echo "Error: that doesn't look like a valid service account JSON. Please re-run install.sh."
+      exit 1
+    fi
+
+    echo "$SA_JSON" | node -e "
+      const sa = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      const out = JSON.stringify({ googleServiceAccountJson: sa }, null, 2);
+      require('fs').writeFileSync('$CREDS_FILE', out + '\n');
+    "
+    echo "Credentials saved."
+  else
+    echo ""
+    echo "Note: No credentials found at $CREDS_FILE"
+    echo "Run install.sh interactively to set them up, or create the file manually."
+    echo ""
   fi
-
-  echo "$SA_JSON" | node -e "
-    const sa = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-    const out = JSON.stringify({ googleServiceAccountJson: sa }, null, 2);
-    require('fs').writeFileSync('$CREDS_FILE', out + '\n');
-  "
-  echo "Credentials saved to $CREDS_FILE"
 else
   echo "Credentials already saved, skipping."
 fi
@@ -80,7 +87,7 @@ config.mcpServers['sync-sheets'] = {
 };
 fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
 console.log('Claude Desktop config updated.');
-"
+" --input-type=commonjs
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
